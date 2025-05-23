@@ -6,6 +6,7 @@ mod scan;
 mod streaming;
 mod udtf;
 mod utils;
+mod gc_content;
 
 use std::string::ToString;
 use std::sync::{Arc, Mutex};
@@ -30,6 +31,7 @@ use crate::option::{
 use crate::scan::{maybe_register_table, register_frame, register_table};
 use crate::streaming::RangeOperationScan;
 use crate::utils::convert_arrow_rb_schema_to_polars_df_schema;
+use crate::gc_content::gc_content;
 
 const LEFT_TABLE: &str = "s1";
 const RIGHT_TABLE: &str = "s2";
@@ -72,6 +74,12 @@ fn range_operation_frame(
             Ok(py_df)
         },
     }
+}
+
+#[pymodule]
+fn py_gc_content(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
+    m.add_function(wrap_pyfunction!(gc_content::gc_content, m)?)?;
+    Ok(())
 }
 
 #[pyfunction]
@@ -417,7 +425,7 @@ fn polars_bio(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_describe_vcf, m)?)?;
     m.add_function(wrap_pyfunction!(py_register_view, m)?)?;
     m.add_function(wrap_pyfunction!(py_from_polars, m)?)?;
-    // m.add_function(wrap_pyfunction!(unary_operation_scan, m)?)?;
+    m.add_function(wrap_pyfunction!(py_gc_content, m)?)?;
     m.add_class::<PyBioSessionContext>()?;
     m.add_class::<FilterOp>()?;
     m.add_class::<RangeOp>()?;
