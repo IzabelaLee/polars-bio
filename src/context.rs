@@ -7,6 +7,8 @@ use exon::ExonSession;
 use log::debug;
 use pyo3::{pyclass, pymethods, PyResult};
 use sequila_core::session_context::SequilaConfig;
+use datafusion::execution::registry::FunctionRegistry;
+use crate::gc_content::create_gc_content_udf;
 
 #[pyclass(name = "BioSessionContext")]
 // #[derive(Clone)]
@@ -24,6 +26,8 @@ impl PyBioSessionContext {
     #[new]
     pub fn new(seed: String, catalog_dir: String) -> PyResult<Self> {
         let ctx = create_context().unwrap();
+        // register udtf
+        ctx.session.register_udf(crate::gc_content::create_gc_content_udf());
         let session_config: HashMap<String, String> = HashMap::new();
 
         Ok(PyBioSessionContext {

@@ -1,56 +1,64 @@
 use std::sync::Arc;
-use arrow_array::{ArrayRef, StringArray};
-use arrow_schema::{DataType, Field, Schema};
-use datafusion::datasource::MemTable;
-use datafusion::execution::context::SessionContext;
-use datafusion::physical_plan::udaf::create_udaf;
-use datafusion::prelude::*;
-use pyo3::prelude::*;
-use tokio::runtime::Runtime;
- 
-use crate::context::PyBioSessionContext;
-use crate::dataframe::PyDataFrame;
- 
-use super::accumulators::GcContentAccumulator;
- 
-#[pyfunction]
-#[pyo3(signature = (py_ctx,))]
-pub fn gc_content(
-    py: Python<'_>,
-    py_ctx: &PyBioSessionContext,
-) -> PyResult<PyDataFrame> {
-    py.allow_threads(|| {
-        let rt = Runtime::new().unwrap();
-        let ctx = &py_ctx.ctx.session;
- 
-        let df = rt.block_on(async {
-            let sequences = vec![
-                "GCGCGC",
-                "ATATAT",
-                "GATTACA",
-            ];
-            let array = Arc::new(StringArray::from(sequences)) as ArrayRef;
-            let schema = Arc::new(Schema::new(vec![Field::new("sequence", DataType::Utf8, false)]));
-            let batch = RecordBatch::try_new(schema.clone(), vec![array]).unwrap();
- 
-            let gc_udaf = create_udaf(
-                "gc_content",
-                vec![DataType::Utf8],
-                Arc::new(DataType::Float64),
-                Volatility::Immutable,
-                Arc::new(|_| Ok(Box::new(GcContentAccumulator::new()))),
-                Arc::new(vec![DataType::Utf8]),
-            );
- 
-            ctx.register_udaf(gc_udaf);
- 
-            let table = MemTable::try_new(batch.schema(), vec![vec![batch]])?;
-            ctx.register_table("sequences", Arc::new(table));
- 
-            let df = ctx.sql("SELECT gc_content(sequence) AS gc_percent FROM sequences").await?;
-            Ok(df)
-        })?;
- 
-        Ok(PyDataFrame::new(df))
-    })
+
+use arrow_array::{Array, StringArray};
+use arrow_schema::DataType;
+
+use datafusion::common::{DataFusionError, Result, ScalarValue};
+use datafusion::logical_expr::{create_udf, ColumnarValue, ScalarUDF, Volatility};
+
+pub fn create_gc_content_udf() -> ScalarUDF {
+    let func = |args: &[ColumnarValue]| -> Result<ColumnarValue> {
+        let string_array = match &args[0] {
+            ColumnarValue::Array(array) => array
+                .as_any()
+                .downcast_ref::<StringArray>()
+                .ok_or_else(|| DataFusionError::Execution("Expected StringArray".to_string()))?,
+            ColumnarValue::Scalar(_) => {
+                return Err(DataFusionError::Execution(
+                    "Expected array input, got scalar".to_string(),
+                ))
+            }
+        };
+
+        let mut results = Vec::with_capacity(string_array.len());
+
+        for i in 0..string_array.len() {
+            if string_array.is_null(i) {
+                results.push(ScalarValue::Float64(None));
+            } else {
+                let s = string_array.value(i);
+                let sequence: Vec<u8> = s
+                    .lines()
+                    .flat_map(|line| line.as_bytes().to_vec())
+                    .collect();
+
+                let gc = sequence.iter()
+                    .filter(|&&b| b == b'G' || b == b'g' || b == b'C' || b == b'c')
+                    .count() as f64;
+
+                let without_n = sequence.iter()
+                    .filter(|&&b| b != b'N' && b != b'n')
+                    .count() as f64;
+
+                let gc_content = if without_n > 0.0 {
+                    gc / without_n * 100.0
+                } else {
+                    0.0
+                };
+
+                results.push(ScalarValue::Float64(Some(gc_content)));
+            }
+        }
+
+        let array = ScalarValue::iter_to_array(results.into_iter())?;
+        Ok(ColumnarValue::Array(array))
+    };
+
+    create_udf(
+        "gc_content",
+        vec![DataType::Utf8],
+        DataType::Float64,
+        Volatility::Immutable,
+        Arc::new(func),
+    )
 }

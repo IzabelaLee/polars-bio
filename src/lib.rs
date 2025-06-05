@@ -22,6 +22,8 @@ use polars_python::error::PyPolarsErr;
 use polars_python::lazyframe::PyLazyFrame;
 use pyo3::prelude::*;
 use tokio::runtime::Runtime;
+use arrow_array::{ArrayRef, Float64Array};
+use arrow_schema::{DataType, Field, Schema};
 
 use crate::context::PyBioSessionContext;
 use crate::operation::do_range_operation;
@@ -31,7 +33,11 @@ use crate::option::{
 use crate::scan::{maybe_register_table, register_frame, register_table};
 use crate::streaming::RangeOperationScan;
 use crate::utils::convert_arrow_rb_schema_to_polars_df_schema;
-use crate::gc_content::gc_content;
+use pyo3::prelude::*;
+use pyo3::wrap_pyfunction;
+
+use arrow_array::RecordBatch;
+use datafusion::dataframe::DataFrame;
 
 const LEFT_TABLE: &str = "s1";
 const RIGHT_TABLE: &str = "s2";
@@ -76,11 +82,6 @@ fn range_operation_frame(
     }
 }
 
-#[pymodule]
-fn py_gc_content(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(gc_content::gc_content, m)?)?;
-    Ok(())
-}
 
 #[pyfunction]
 #[pyo3(signature = (py_ctx, df_path_or_table1, df_path_or_table2, range_options, read_options1=None, read_options2=None, limit=None))]
@@ -425,7 +426,6 @@ fn polars_bio(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_describe_vcf, m)?)?;
     m.add_function(wrap_pyfunction!(py_register_view, m)?)?;
     m.add_function(wrap_pyfunction!(py_from_polars, m)?)?;
-    m.add_function(wrap_pyfunction!(py_gc_content, m)?)?;
     m.add_class::<PyBioSessionContext>()?;
     m.add_class::<FilterOp>()?;
     m.add_class::<RangeOp>()?;
