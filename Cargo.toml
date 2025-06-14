@@ -11,6 +11,7 @@ crate-type= ["cdylib"]
 
 
 [dependencies]
+bio = "2.3.0"
 datafusion-python = { git = "https://github.com/apache/datafusion-python.git", rev = "5c834934dec89bd96ff70df3b278e9d6fe78f7ec"}
 pyo3 = { version = "0.22"}
 pyo3-log = "0.11.0"

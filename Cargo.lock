@@ -969,9 +969,9 @@ checksum = "8c3c1a368f70d6cf7302d78f8f7093da241fb8e8807c05cc9e51a125895a6d5b"
 
 [[package]]
 name = "bio"
-version = "2.0.3"
+version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d563b9298d39b3bdb5c45f6e91e0bdcb18d67e6d8fa034a733b7283f2db5ed29"
+checksum = "add46f280e82963d4abb6f2c78f491a1f45be23ba27516856a1efbf194107bb7"
 dependencies = [
  "anyhow",
  "approx",
@@ -984,7 +984,7 @@ dependencies = [
  "editdistancek",
  "enum-map",
  "fxhash",
- "itertools 0.13.0",
+ "itertools 0.14.0",
  "itertools-num",
  "lazy_static",
  "multimap",
@@ -992,16 +992,15 @@ dependencies = [
  "newtype_derive",
  "num-integer",
  "num-traits",
- "ordered-float 4.6.0",
+ "ordered-float 5.0.0",
  "petgraph",
- "rand",
  "regex",
  "serde",
  "serde_derive",
  "statrs",
  "strum 0.26.3",
  "strum_macros 0.26.4",
- "thiserror 1.0.69",
+ "thiserror 2.0.11",
  "triple_accel",
  "vec_map",
 ]
@@ -4536,9 +4535,9 @@ dependencies = [
 
 [[package]]
 name = "ordered-float"
-version = "4.6.0"
+version = "5.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7bb71e1b3fa6ca1c61f383464aaf2bb0e2f8e772a1f01d486832464de363b951"
+checksum = "e2c1f9f56e534ac6a9b8a4600bdf0f530fb393b5f393e7b4d03489c3cf0c3f01"
 dependencies = [
  "num-traits",
 ]
@@ -5405,6 +5404,7 @@ dependencies = [
  "arrow-schema",
  "async-stream",
  "async-trait",
+ "bio",
  "coitrees",
  "datafusion",
  "datafusion-python",
