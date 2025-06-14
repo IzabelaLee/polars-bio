@@ -145,6 +145,9 @@ BIO_DF_PATH2 = f"{DATA_DIR}/fBrain-DS14718/*.parquet"
 BIO_PD_DF1 = pd.read_parquet(f"{DATA_DIR}/exons/")
 BIO_PD_DF2 = pd.read_parquet(f"{DATA_DIR}/fBrain-DS14718/")
 
+DF_INPUT_GC_CONTENT_PATH = f"{DATA_DIR}/gc_content/reads.fastq"
+DF_EXPECTED_GC_CONTENT_PATH = f"{DATA_DIR}/gc_content/sql_target.csv"
+EXPECTED_SQL_GC_DF = pd.read_csv(DF_EXPECTED_GC_CONTENT_PATH)
 
 # Polars
 PL_DF_OVERLAP = pl.DataFrame(PD_DF_OVERLAP)

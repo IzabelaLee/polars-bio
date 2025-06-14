@@ -25,29 +25,31 @@ pub fn create_gc_content_udf() -> ScalarUDF {
         for i in 0..string_array.len() {
             if string_array.is_null(i) {
                 results.push(ScalarValue::Float64(None));
-            } else {
-                let s = string_array.value(i);
-                let sequence: Vec<u8> = s
-                    .lines()
-                    .flat_map(|line| line.as_bytes().to_vec())
-                    .collect();
-
-                let gc = sequence.iter()
-                    .filter(|&&b| b == b'G' || b == b'g' || b == b'C' || b == b'c')
-                    .count() as f64;
-
-                let without_n = sequence.iter()
-                    .filter(|&&b| b != b'N' && b != b'n')
-                    .count() as f64;
-
-                let gc_content = if without_n > 0.0 {
-                    gc / without_n * 100.0
-                } else {
-                    0.0
-                };
-
-                results.push(ScalarValue::Float64(Some(gc_content)));
+                continue;
             }
+
+            let s = string_array.value(i);
+            let mut gc = 0;
+            let mut total = 0;
+
+            for b in s.bytes().filter(|&b| b != b'\n') {
+                match b {
+                    b'G' | b'g' | b'C' | b'c' => {
+                        gc += 1;
+                        total += 1;
+                    }
+                    b'N' | b'n' => {}
+                    _ => total += 1,
+                }
+            }
+
+            let gc_content = if total > 0 {
+                (gc as f64) / (total as f64) * 100.0
+            } else {
+                0.0
+            };
+
+            results.push(ScalarValue::Float64(Some(gc_content)));
         }
 
         let array = ScalarValue::iter_to_array(results.into_iter())?;

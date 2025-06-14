@@ -1,37 +1,36 @@
+import time
+import pytest
 import pandas as pd
-from polars_bio.polars_bio import fastq_gc_dataframe
+import polars_bio as pb
 
-EXPECTED_PATH = "tests/data/gc_content/target.csv"
-INPUT_FASTQ = "tests/data/gc_content/reads.fastq"
+from _expected import EXPECTED_SQL_GC_DF, DF_INPUT_GC_CONTENT_PATH
 
-class TestGCContent:
+class TestSQLGCContent:
     @classmethod
     def setup_class(cls):
-        cls.df = fastq_gc_dataframe(INPUT_FASTQ).to_pandas()
-        cls.expected = pd.read_csv(EXPECTED_PATH)
+        cls.df = pb.read_fastq(DF_INPUT_GC_CONTENT_PATH).collect()
+        pb.sql("select * from reads").collect()
+
+        cls.result = pb.sql("select sequence, gc_content(sequence) as gc from reads").collect()
+
+        cls.result_pd = cls.result.to_pandas()
+        cls.expected = EXPECTED_SQL_GC_DF
 
     def test_gc_content_shape(self):
-        assert self.df.shape == self.expected.shape
+        assert self.result_pd.shape == self.expected.shape
 
     def test_gc_content_columns(self):
-        assert list(self.df.columns) == [
-            "id", "G_count", "C_count", "GC_count", "len", "GC_content"
-        ]
+        assert list(self.result_pd.columns) == ["sequence", "gc"]
 
-    def test_gc_content_schema(self):
-        dtypes = self.df.dtypes.to_dict()
-        assert dtypes["id"] == "object"
-
-        assert pd.api.types.is_unsigned_integer_dtype(dtypes["G_count"])
-        assert pd.api.types.is_unsigned_integer_dtype(dtypes["C_count"])
-        assert pd.api.types.is_unsigned_integer_dtype(dtypes["GC_count"])
-        assert pd.api.types.is_unsigned_integer_dtype(dtypes["len"])
-        assert pd.api.types.is_float_dtype(dtypes["GC_content"])
+    def test_gc_content_dtypes(self):
+        dtypes = self.result_pd.dtypes.to_dict()
+        assert dtypes["sequence"] == "object"
+        assert pd.api.types.is_float_dtype(dtypes["gc"])
 
     def test_gc_content_values(self):
-        df_sorted = self.df.sort_values(by="id").reset_index(drop=True)
-        expected_sorted = self.expected.sort_values(by="id").reset_index(drop=True)
+        result_sorted = self.result_pd.sort_values(by="sequence").reset_index(drop=True)
+        expected_sorted = self.expected.sort_values(by="sequence").reset_index(drop=True)
 
-        expected_sorted = expected_sorted.astype(df_sorted.dtypes.to_dict())
+        expected_sorted = expected_sorted.astype(result_sorted.dtypes.to_dict())
 
-        pd.testing.assert_frame_equal(df_sorted, expected_sorted)
+        pd.testing.assert_frame_equal(result_sorted, expected_sorted)
